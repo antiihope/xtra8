@@ -26,36 +26,46 @@
 //   }
 // }
 
+function GenID() {
+  return (Math.random() + 1).toString(36).substring(7);
+}
+window.seeme = (e) => {
+  window['focused'] = e.target.id;
+};
 function WatchValues(values, type) {
   // assign id if not already there  , for easier  Callback
   if (values == null) {
     var values = {};
 
-    values.id = type;
-    if (values.id == undefined) {
-      values.id = type;
-    }
+    values.id = type + 1;
   }
-  values.onfocus = (e) => (window.focused = e.target.id);
+  if (values.id == undefined) {
+    values.id = type + 1;
+  }
+  var id = values.id;
+  if (id.length == 0) {
+    values.id = type + 1;
+  }
+  values.onfocus = (e) => window.seeme(e);
 
   return values;
 }
 
 // callback function after window var change
-function setListen(variableName, target, value, oldValue) {
-  var target = el(target.id);
+// function setListen(variableName, target, value, oldValue) {
+//   var target = el(target.id);
 
-  var text = target.innerHTML;
+//   var text = target.innerHTML;
 
-  if (value.length == 0) {
-    // console.log('aha');
-    value = ' ';
-  }
-  var text = text.replace('' + oldValue, value);
-  target.innerHTML = text;
-  // watch the new variable for change again!
-  new WatchedVariable(variableName, value, setListen, target);
-}
+//   if (value.length == 0) {
+//     // console.log('aha');
+//     value = ' ';
+//   }
+//   var text = text.replace('' + oldValue, value);
+//   target.innerHTML = text;
+//   // watch the new variable for change again!
+//   new WatchedVariable(variableName, value, setListen, target);
+// }
 
 var React = {
   createElement: (type, values, ...content) => {
@@ -158,5 +168,7 @@ function State(z, x) {
     }
   };
 }
+
+window.xtra8 = { React, render, State };
 
 export { React, render, State };
