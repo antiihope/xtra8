@@ -1,0 +1,43 @@
+{
+  "name": "xtra8",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "sourceType": "module",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "browserify src/index.js -t babelify --outfile public/bundle.js",
+    "build": "browserify src/index.js -t babelify --outfile public/bundle.js",
+    "watch": "watchify src/index.js -t babelify --outfile public/bundle.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "^7.16.0",
+    "@babel/core": "^7.16.0",
+    "@babel/preset-env": "^7.16.0",
+    "@babel/preset-react": "^7.16.0"
+  },
+  "dependencies": {
+    "watchify": "^4.0.0"
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+    ]
+  },
+  "browserify": {
+    "transform": [
+      [
+        "babelify",
+        {
+          "presets": [
+            "@babel/preset-env"
+          ]
+        }
+      ]
+    ]
+  }
+}
