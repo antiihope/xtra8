@@ -17,11 +17,7 @@ function SetValues(values, type, content, els = window.els) {
   } else {
     window.els[type] = 1;
   }
-
   var count = window.els[type];
-
-  var string = typeof content[0] == 'string';
-  var num = typeof content[0] == 'number';
   var id;
 
   id = type + count;
@@ -39,7 +35,7 @@ function SetValues(values, type, content, els = window.els) {
     values.id = type + count;
   }
 
-  values.onfocus = (e) => (window['focused'] = e.target.id);
+  // values.onfocus = (e) => (window['focused'] = e.target.id);
 
   return values;
 }
@@ -48,8 +44,9 @@ var React = {
   createElement: (type, values, ...content) => {
     var element = document.createElement(type);
     // assign id if not already there  , for easier  Callback
-    values = SetValues(values, type, content);
-    Object.assign(element, values);
+    var newvalues = SetValues(values, type, content);
+
+    Object.assign(element, { ...newvalues, ...values });
 
     content.forEach((z) => {
       if (typeof z == 'function') {
@@ -154,6 +151,7 @@ function UpdateDom(newdom = false) {
         // });
         return true;
       } catch (error) {
+        console.log(error);
         return false;
       }
 
@@ -188,11 +186,16 @@ function main(x) {
   root.replaceWith(div);
   if (window.focused) {
     var focus = el(window.focused);
-    focus.focus();
+    if (focus) {
+      focus.focus();
+    }
   }
   return;
 }
 
+function rerender(x) {
+  UpdateDom(x());
+}
 function render(x) {
   window.vdom = x;
   // window.OLDvdom = x();
@@ -298,10 +301,15 @@ var Modules = {
   SetModulesFile: SetModulesFile,
 };
 
-window.xtra8 = { React, render, State, States, Modules, req };
+const GenID = () => {
+  let r = (Math.random() + 1).toString(36).substring(7);
+  return r;
+};
+
+window.xtra8 = { React, render, State, States, Modules, req, rerender };
 window.App = window.xtra8;
 
-export { React, render, State, States, Modules, req };
+export { React, render, State, States, Modules, req, rerender };
 
 // 3:38 AM 11/18/2021
 // there are values not changing .. figure it out i wanna sleep
