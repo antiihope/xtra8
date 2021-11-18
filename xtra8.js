@@ -1,3 +1,5 @@
+import * as NaminAnythingBlah from 'https://unpkg.com/@babel/standalone@7.16.4/babel.min.js';
+
 window.print = (...x) => {
   console.log(...x);
 };
@@ -289,5 +291,5 @@ window.xtra8 = { React, render, State, States, Modules, req };
 
 export { React, render, State, States, Modules, req };
 
-//8:50 PM , 11/18/2021
-// Done
+// 3:38 AM 11/18/2021
+// there are values not changing .. figure it out i wanna sleep
