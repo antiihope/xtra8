@@ -1,24 +1,43 @@
-function GenID() {
-  return (Math.random() + 1).toString(36).substring(7);
-}
+window.print = (...x) => {
+  console.log(...x);
+};
+
 window.seeme = (e) => {
   window['focused'] = e.target.id;
 };
-function SetValues(values, type) {
+
+function SetValues(values, type, content, els = window.els) {
+  if (window.els == undefined) {
+    window.els = {};
+  }
+  if (window.els[type] !== undefined) {
+    window.els[type] = window.els[type] + 1;
+  } else {
+    window.els[type] = 1;
+  }
+
+  var count = window.els[type];
+
+  var string = typeof content[0] == 'string';
+  var num = typeof content[0] == 'number';
+  var id;
+
+  id = type + count;
   // assign id if not already there  , for easier  Callback
   if (values == null) {
     var values = {};
 
-    values.id = type + 1;
+    values.id = id;
   }
   if (values.id == undefined) {
-    values.id = type + 1;
+    values.id = id;
   }
   var id = values.id;
   if (id.length == 0) {
-    values.id = type + 1;
+    values.id = type + count;
   }
-  values.onfocus = (e) => window.seeme(e);
+
+  values.onfocus = (e) => (window['focused'] = e.target.id);
 
   return values;
 }
@@ -27,12 +46,12 @@ var React = {
   createElement: (type, values, ...content) => {
     var element = document.createElement(type);
     // assign id if not already there  , for easier  Callback
-    values = SetValues(values, type);
+    values = SetValues(values, type, content);
     Object.assign(element, values);
 
     content.forEach((z) => {
       if (typeof z == 'function') {
-        // console.log(z);
+        // print(z);
         vdom[z.name] = z;
         var newz = z();
         newz.id = z.name;
@@ -57,23 +76,89 @@ window.el = (x) => {
 };
 
 function UpdateDom(newdom = false) {
+  while (window.els !== undefined) {
+    delete window.els;
+  }
+
+  // Reset elements count > elements count was made for id , head back to set values uprthere
+
+  window['focused'] = document.activeElement.id;
+
   if (newdom == false) {
+    delete window.els;
+
     var newdom = window.vdom();
+    newdom = window.vdom();
   }
   var root = el('parent');
   var oldDom = root.childNodes[0];
   var matchs = newdom.innerHTML == oldDom.innerHTML;
+
   if (!matchs) {
     window['olDom'] = oldDom;
+    // what this function?! you ask
+    var changed = 0;
+    const diff = (diffMe, diffBy) => diffMe.split(diffBy).join('\n');
+    var oldDom = root.childNodes[0];
+    var clone = oldDom.cloneNode(true);
 
-    var div = document.createElement('div');
-    div.id = 'parent';
-    div.append(newdom);
-    root.replaceWith(div);
-    if (window.focused) {
-      var focus = el(window.focused);
-      if (focus) {
-        focus.focus();
+    function tryes() {
+      try {
+        function arr_diff(a1, a2) {
+          var anew = a1.filter(
+            ({ inner: id1 }) => !a2.some(({ inner: id2 }) => id2 == id1)
+          );
+
+          return anew;
+        }
+
+        function childtoarray(x) {
+          // pass node element , turn it into object of its id and inner html
+          var z = [[], []];
+          x.forEach((element) => {
+            z[0].push({ inner: element.innerHTML, id: element.id });
+          });
+          // push parent element id , to check if the page has change or not later
+          z[1].push(x[0].parentElement.id);
+          return z;
+        }
+
+        var old = childtoarray(oldDom.childNodes);
+        var vso = childtoarray(newdom.childNodes);
+        // if parent element changed return false
+        if (old[1][0] !== vso[1][0]) {
+          return false;
+        }
+        // else get diff and change DOM , that means you dont have to update the whole thing
+        var nesa = arr_diff(vso[0], old[0]);
+        // print(vso, old);
+        // changed = changed + nesa.length;
+        nesa.forEach((obj) => {
+          var ele = el(obj.id);
+          if (ele) {
+            ele.innerHTML = obj.inner;
+          }
+        });
+        return true;
+      } catch (error) {
+        return false;
+      }
+
+      return false;
+    }
+
+    if (tryes() == false) {
+      print('returned false');
+      console.clear();
+      var div = document.createElement('div');
+      div.id = 'parent';
+      div.append(newdom);
+      root.replaceWith(div);
+      if (window.focused) {
+        var focus = el(window.focused);
+        if (focus) {
+          focus.focus();
+        }
       }
     }
     return;
@@ -87,7 +172,7 @@ function main(x) {
   var div = document.createElement('div');
   div.id = 'parent';
   div.append(x());
-  // console.log(div);
+  // print(div);
   root.replaceWith(div);
   if (window.focused) {
     var focus = el(window.focused);
@@ -109,16 +194,16 @@ function render(x) {
 
 function State(z, x, Callback = false) {
   if (x.length == 0) {
-    // console.log('aha');
+    // print('aha');
     x = ' ';
-    console.log(x.length);
+    print(x.length);
   }
 
   window[z] = x;
   if (Callback) {
     window['set' + z] = (c) => {
-      console.log('update');
-
+      print('update');
+      delete window.els;
       if (c !== z) {
         // new value DIF from original SO UPDATE DOM
         Callback(c);
@@ -129,6 +214,8 @@ function State(z, x, Callback = false) {
   } else {
     window['set' + z] = (c) => {
       if (c !== z) {
+        delete window.els;
+
         // new value DIF from original SO UPDATE DOM
 
         window[z] = c;
@@ -143,6 +230,7 @@ function States(obj) {
     window[key] = obj[key];
     window['set' + key] = (c) => {
       // new value DIF from original SO UPDATE DOM
+      delete window.els;
 
       window[key] = c;
       UpdateDom();
@@ -161,7 +249,7 @@ async function getFetch(url) {
     .then((result) => {
       return result;
     })
-    .catch((error) => console.log('error', error));
+    .catch((error) => print('error', error));
 }
 
 // get modules  , parse it , eval it , append it to html
@@ -200,3 +288,6 @@ var Modules = {
 window.xtra8 = { React, render, State, States, Modules, req };
 
 export { React, render, State, States, Modules, req };
+
+//8:50 PM , 11/18/2021
+// Done
