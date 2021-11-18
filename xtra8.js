@@ -132,15 +132,26 @@ function UpdateDom(newdom = false) {
           return false;
         }
         // else get diff and change DOM , that means you dont have to update the whole thing
-        var nesa = arr_diff(vso[0], old[0]);
-        // print(vso, old);
-        // changed = changed + nesa.length;
-        nesa.forEach((obj) => {
-          var ele = el(obj.id);
-          if (ele) {
-            ele.innerHTML = obj.inner;
+        // var nesa = arr_diff(vso[0], old[0]);
+        vso[0].forEach((element) => {
+          var index = vso[0].indexOf(element);
+          var olds = old[0][index];
+          if (olds.inner !== element.inner) {
+            var ele = el(olds.id);
+            if (ele) {
+              ele.innerHTML = element.inner;
+            }
           }
         });
+
+        // print(vso[0], old[0]);
+        // changed = changed + nesa.length;
+        // nesa.forEach((obj) => {
+        // var ele = el(obj.id);
+        // if (ele) {
+        //   ele.innerHTML = obj.inner;
+        // }
+        // });
         return true;
       } catch (error) {
         return false;
@@ -150,8 +161,7 @@ function UpdateDom(newdom = false) {
     }
 
     if (tryes() == false) {
-      print('returned false');
-      console.clear();
+      // print('returned false');
       var div = document.createElement('div');
       div.id = 'parent';
       div.append(newdom);
@@ -283,13 +293,17 @@ async function req(file) {
 var Modules = {
   SetModule: function (z) {
     this[z.name] = z;
+    window.App[z.name] = z;
   },
   SetModulesFile: SetModulesFile,
 };
 
 window.xtra8 = { React, render, State, States, Modules, req };
+window.App = window.xtra8;
 
 export { React, render, State, States, Modules, req };
 
 // 3:38 AM 11/18/2021
 // there are values not changing .. figure it out i wanna sleep
+
+/** @jsx xtra8 */
