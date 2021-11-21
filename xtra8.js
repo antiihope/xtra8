@@ -1,14 +1,16 @@
-import * as NaminAnythingBlah from 'https://unpkg.com/@babel/standalone@7.16.4/babel.min.js';
+import * as NaminAnythingBlah from 'https://cdn.jsdelivr.net/gh/hazem223/xtra8@main/lib/xtra8babel@1.0.3.js';
 
-window.print = (...x) => {
-  console.log(...x);
+const GenID = () => {
+  let r = (Math.random() + 1).toString(36).substring(7);
+  return r;
 };
+
+window.print = console.log;
 
 window.seeme = (e) => {
   window['focused'] = e.target.id;
 };
-
-function SetValues(values, type, content, els = window.els) {
+function SetValues(values, type, name) {
   if (window.els == undefined) {
     window.els = {};
   }
@@ -19,8 +21,11 @@ function SetValues(values, type, content, els = window.els) {
   }
   var count = window.els[type];
   var id;
-
   id = type + count;
+  if (name) {
+    id = name;
+  }
+
   // assign id if not already there  , for easier  Callback
   if (values == null) {
     var values = {};
@@ -32,7 +37,7 @@ function SetValues(values, type, content, els = window.els) {
   }
   var id = values.id;
   if (id.length == 0) {
-    values.id = type + count;
+    id = name;
   }
 
   // values.onfocus = (e) => (window['focused'] = e.target.id);
@@ -41,10 +46,23 @@ function SetValues(values, type, content, els = window.els) {
 }
 
 var React = {
-  createElement: (type, values, ...content) => {
-    var element = document.createElement(type);
+  createElement: function createElement(type, values, ...content) {
+    if (type == 'route') {
+      print(type, values);
+    }
+
     // assign id if not already there  , for easier  Callback
-    var newvalues = SetValues(values, type, content);
+    // print(type, values, content);
+
+    var newvalues = SetValues(values, type, false);
+    if (typeof type !== 'string') {
+      // print(type);
+      var newvalues = SetValues(values, type, type.name);
+
+      return type(newvalues);
+    }
+
+    var element = document.createElement(type);
 
     Object.assign(element, { ...newvalues, ...values });
 
@@ -58,6 +76,7 @@ var React = {
       } else {
         // this to look for loops in element content
         if (Array.isArray(z)) {
+          // console.log(z);
           z.forEach((typos) => {
             element.append(typos);
           });
@@ -69,6 +88,8 @@ var React = {
     return element;
   },
 };
+
+window.React = React;
 
 window.el = (x) => {
   return document.getElementById(x);
@@ -87,7 +108,7 @@ function UpdateDom(newdom = false) {
     delete window.els;
 
     var newdom = window.vdom();
-    newdom = window.vdom();
+    // newdom = window.vdom();
   }
   var root = el('parent');
   var oldDom = root.childNodes[0];
@@ -124,22 +145,44 @@ function UpdateDom(newdom = false) {
 
         var old = childtoarray(oldDom.childNodes);
         var vso = childtoarray(newdom.childNodes);
+        var cloneDom = childtoarray(clone.childNodes);
+
+        // print(old, vso);
         // if parent element changed return false
-        if (old[1][0] !== vso[1][0]) {
+        if (cloneDom[1][0] !== vso[1][0]) {
+          // print(false);
           return false;
         }
+        // print(cloneDom[1][0], vso[1][0]);
         // else get diff and change DOM , that means you dont have to update the whole thing
         // var nesa = arr_diff(vso[0], old[0]);
-        vso[0].forEach((element) => {
-          var index = vso[0].indexOf(element);
-          var olds = old[0][index];
-          if (olds.inner !== element.inner) {
-            var ele = el(olds.id);
-            if (ele) {
-              ele.innerHTML = element.inner;
+        // console.log(nesa);
+        try {
+          vso[0].forEach((element) => {
+            var index = vso[0].indexOf(element);
+            var olds = cloneDom[0][index];
+            if (olds.inner !== element.inner) {
+              var ele = clone.querySelector('#' + olds.id);
+              if (ele) {
+                ele.innerHTML = element.inner;
+              }
             }
-          }
-        });
+          });
+          if (clone.innerHTML == newdom.innerHTML) {
+            vso[0].forEach((element) => {
+              var index = vso[0].indexOf(element);
+              var olds = old[0][index];
+              if (olds.inner !== element.inner) {
+                var ele = el(olds.id);
+                if (ele) {
+                  ele.innerHTML = element.inner;
+                }
+              }
+            });
+          } else return false;
+        } catch (error) {
+          return false;
+        }
 
         // print(vso[0], old[0]);
         // changed = changed + nesa.length;
@@ -193,44 +236,45 @@ function main(x) {
   return;
 }
 
-function rerender(x) {
-  UpdateDom(x());
-}
 function render(x) {
+  // print(x);
   window.vdom = x;
-  // window.OLDvdom = x();
   let stateCheck = setInterval(() => {
     if (document.readyState === 'complete') {
       clearInterval(stateCheck);
       main(x);
     }
-  }, 100);
+  }, 1);
 }
 
 function State(z, x, Callback = false) {
   if (x.length == 0) {
     // print('aha');
     x = ' ';
-    print(x.length);
+    // print(x.length);
   }
 
   window[z] = x;
   if (Callback) {
-    window['set' + z] = (c) => {
+    window['set' + z] = (c, Callback = false) => {
       print('update');
       delete window.els;
       if (c !== z) {
         // new value DIF from original SO UPDATE DOM
-        Callback(c);
+        if (Callback) {
+          Callback(c);
+        }
         window[z] = c;
         UpdateDom();
       }
     };
   } else {
-    window['set' + z] = (c) => {
+    window['set' + z] = (c, Callback = false) => {
       if (c !== z) {
         delete window.els;
-
+        if (Callback) {
+          Callback(c);
+        }
         // new value DIF from original SO UPDATE DOM
 
         window[z] = c;
@@ -293,25 +337,93 @@ async function req(file) {
 }
 
 // Set modules to access it from diffrent js files
+
 var Modules = {
   SetModule: function (z) {
-    this[z.name] = z;
-    window.App[z.name] = z;
+    var name = z.name;
+    this[name] = z;
+    window.App[name] = z;
   },
   SetModulesFile: SetModulesFile,
 };
 
-const GenID = () => {
-  let r = (Math.random() + 1).toString(36).substring(7);
-  return r;
+// set multi-ple pages at once
+function Router(z) {
+  for (var key in z) {
+    if (key.length == 0) {
+      key = 'Main';
+    }
+    function Callee() {
+      location.hash = key;
+      return z[key]();
+    }
+    window.App[key] = Callee;
+    print(key);
+  }
+}
+
+// set page for hash
+var Route = (x, z) => {
+  function Callee() {
+    location.hash = x;
+    return z();
+  }
+  window.App[x] = Callee;
 };
 
-window.xtra8 = { React, render, State, States, Modules, req, rerender };
+// let value;
+
+function useState(initialValue , Callback=false) {
+  var _val = initialValue;
+  var state = {
+    _val: initialValue,
+    state: function state() {
+      return this._val;
+    },
+    get val() {
+      return this._val;
+    },
+  };
+
+  function setState(newVal  ,Callback=false) {
+    // same
+    if (Callback) {
+      Callback(newVal)
+    }
+    state._val = newVal;
+    UpdateDom();
+  }
+  if (Callback) {
+    Callback(initialValue)
+  }
+  return [state, setState]; // exposing functions for external use
+}
+
+window.xtra8 = {
+  React,
+  render,
+  State,
+  States,
+  Modules,
+  req,
+  useState,
+  Router,
+  Route,
+};
 window.App = window.xtra8;
 
-export { React, render, State, States, Modules, req, rerender };
+export { React, render, State, States, Modules, req };
 
-// 3:38 AM 11/18/2021
-// there are values not changing .. figure it out i wanna sleep
-
-/** @jsx xtra8 */
+window.onhashchange = (e) => {
+  var name = location.hash.replace('#', '');
+  // print(name);
+  if (name.length == 0) {
+    return UpdateDom();
+    var name = 'Main';
+  }
+  if (window.App[name] !== undefined) {
+    return main(window.App[name]);
+  } else {
+    return UpdateDom();
+  }
+};
