@@ -1,4 +1,4 @@
-import * as NaminAnythingBlah from 'https://cdn.jsdelivr.net/gh/hazem223/xtra8@main/lib/xtra8babel@1.0.3.js';
+import * as NaminAnythingBlah from './babel.min.js';
 
 const GenID = () => {
   let r = (Math.random() + 1).toString(36).substring(7);
@@ -10,7 +10,10 @@ window.print = console.log;
 window.seeme = (e) => {
   window['focused'] = e.target.id;
 };
-function SetValues(values, type, name) {
+function SetValues(values, type, content) {
+  if (window.useEffect == undefined) {
+    window.useEffect = {};
+  }
   if (window.els == undefined) {
     window.els = {};
   }
@@ -22,11 +25,8 @@ function SetValues(values, type, name) {
   var count = window.els[type];
   var id;
   id = type + count;
-  if (name) {
-    id = name;
-  }
-
   // assign id if not already there  , for easier  Callback
+
   if (values == null) {
     var values = {};
 
@@ -40,8 +40,26 @@ function SetValues(values, type, name) {
     id = name;
   }
 
-  // values.onfocus = (e) => (window['focused'] = e.target.id);
-
+  if (values.if !== undefined) {
+    // print(values.if);
+    var statment = values.if;
+    if (statment == false) {
+      return 'stop';
+      delete values.if;
+      values.style = 'visibility: hidden;';
+      // return React.createElement(type, values, content);
+    } else {
+      // look for useeffect and call it or ignore it
+      if (values.useEffect) {
+        if (typeof values.useEffect == 'function') {
+          if (!window.useEffect[id]) {
+            values.useEffect();
+            window.useEffect[id] = true;
+          }
+        }
+      }
+    }
+  }
   return values;
 }
 
@@ -50,16 +68,22 @@ var React = {
     if (type == 'route') {
       print(type, values);
     }
-
+    // print(type);
     // assign id if not already there  , for easier  Callback
     // print(type, values, content);
 
-    var newvalues = SetValues(values, type, false);
-    if (typeof type !== 'string') {
-      // print(type);
-      var newvalues = SetValues(values, type, type.name);
-
-      return type(newvalues);
+    var newvalues = SetValues(values, type, content);
+    if (newvalues == 'stop') {
+      return '';
+    }
+    if (type !== undefined) {
+      if (typeof type == 'function') {
+        // print(typeof type, type);
+        var newvalues = SetValues(values, type, content);
+        return type(newvalues);
+      }
+    } else {
+      return '';
     }
 
     var element = document.createElement(type);
@@ -90,7 +114,6 @@ var React = {
 };
 
 window.React = React;
-
 window.el = (x) => {
   return document.getElementById(x);
 };
@@ -101,14 +124,14 @@ function UpdateDom(newdom = false) {
   }
 
   // Reset elements count > elements count was made for id , head back to set values uprthere
-
   window['focused'] = document.activeElement.id;
-
+  var external;
+  external = true;
   if (newdom == false) {
-    delete window.els;
+    external = false;
 
+    delete window.els;
     var newdom = window.vdom();
-    // newdom = window.vdom();
   }
   var root = el('parent');
   var oldDom = root.childNodes[0];
@@ -122,16 +145,8 @@ function UpdateDom(newdom = false) {
     var oldDom = root.childNodes[0];
     var clone = oldDom.cloneNode(true);
 
-    function tryes() {
+    function tryes(repeat = false) {
       try {
-        function arr_diff(a1, a2) {
-          var anew = a1.filter(
-            ({ inner: id1 }) => !a2.some(({ inner: id2 }) => id2 == id1)
-          );
-
-          return anew;
-        }
-
         function childtoarray(x) {
           // pass node element , turn it into object of its id and inner html
           var z = [[], []];
@@ -142,7 +157,6 @@ function UpdateDom(newdom = false) {
           z[1].push(x[0].parentElement.id);
           return z;
         }
-
         var old = childtoarray(oldDom.childNodes);
         var vso = childtoarray(newdom.childNodes);
         var cloneDom = childtoarray(clone.childNodes);
@@ -150,13 +164,23 @@ function UpdateDom(newdom = false) {
         // print(old, vso);
         // if parent element changed return false
         if (cloneDom[1][0] !== vso[1][0]) {
+          if (!repeat) {
+            if (!external) {
+              newdom = window.vdom();
+              return tryes(true);
+            } else return false;
+          } else {
+            print('tryed and false not same');
+            return false;
+          }
           // print(false);
-          return false;
+          // return false;
+        } else {
+          if (repeat) {
+            // print('tryes and success');
+          }
         }
-        // print(cloneDom[1][0], vso[1][0]);
-        // else get diff and change DOM , that means you dont have to update the whole thing
-        // var nesa = arr_diff(vso[0], old[0]);
-        // console.log(nesa);
+
         try {
           vso[0].forEach((element) => {
             var index = vso[0].indexOf(element);
@@ -179,8 +203,18 @@ function UpdateDom(newdom = false) {
                 }
               }
             });
-          } else return false;
+          } else {
+            if (!repeat) {
+              return tryes(true);
+            } else {
+              print('tryes  and false');
+              return false;
+            }
+          }
         } catch (error) {
+          // console.log('error in tryes() in updateDom 1 ');
+          // console.clear();
+
           return false;
         }
 
@@ -194,7 +228,10 @@ function UpdateDom(newdom = false) {
         // });
         return true;
       } catch (error) {
-        console.log(error);
+        // print(error.message);
+        // console.log('error in tryes() in updateDom');
+        // console.clear();
+
         return false;
       }
 
@@ -236,13 +273,32 @@ function main(x) {
   return;
 }
 
+function whatPageIsThis() {
+  var name = location.hash.replace('#', '');
+  // print(name);
+  if (name.length == 0) {
+    var name = 'Main';
+    return null;
+  }
+  if (window.App[name] !== undefined) {
+    return window.App[name];
+  }
+}
+
 function render(x) {
+  App.Modules[x.name] = x;
   // print(x);
   window.vdom = x;
   let stateCheck = setInterval(() => {
     if (document.readyState === 'complete') {
       clearInterval(stateCheck);
-      main(x);
+      var page = whatPageIsThis();
+      if (page == null) {
+        main(x);
+        return;
+      } else {
+        main(page);
+      }
     }
   }, 1);
 }
@@ -339,7 +395,7 @@ async function req(file) {
 // Set modules to access it from diffrent js files
 
 var Modules = {
-  SetModule: function (z) {
+  SetModule: function (z, x) {
     var name = z.name;
     this[name] = z;
     window.App[name] = z;
@@ -364,39 +420,115 @@ function Router(z) {
 
 // set page for hash
 var Route = (x, z) => {
-  function Callee() {
-    location.hash = x;
-    return z();
+  App.Modules[x] = z;
+  if (typeof z == 'function') {
+    function Callee() {
+      location.hash = x;
+      return z();
+    }
+
+    window.App[x] = Callee;
+  } else {
+    function Callee() {
+      location.hash = x;
+      return z;
+    }
+
+    window.App[x] = Callee;
   }
-  window.App[x] = Callee;
 };
 
 // let value;
 
-function useState(initialValue , Callback=false) {
-  var _val = initialValue;
+var calls = 0;
+
+window.updates = {};
+
+function useEffect(fn, name) {
+  if (window.useEffect == undefined) {
+    window.useEffect = {};
+  }
+  if (!window.useEffect[name]) {
+    window.useEffect[name] = true;
+    fn();
+  }
+}
+
+function useState(initialValue, Callback = false) {
+  if (window.App.values === undefined) {
+    window.App.values = {};
+  }
+  var id = GenID();
+  window.App.values[id] = initialValue;
+
   var state = {
-    _val: initialValue,
     state: function state() {
-      return this._val;
+      return window.App.values[id];
     },
     get val() {
-      return this._val;
+      return window.App.values[id];
+    },
+    vals: (x) => {
+      window.App.values[id] = x;
     },
   };
 
-  function setState(newVal  ,Callback=false) {
-    // same
-    if (Callback) {
-      Callback(newVal)
+  function setState(newVal, Callbacks = false) {
+    try {
+      clearTimeout(window.timeout);
+      // print('cleared');
+    } catch (error) {
+      print('not there');
     }
-    state._val = newVal;
-    UpdateDom();
+
+    if (JSON.stringify(state.val) !== JSON.stringify(newVal)) {
+      // print(state.val, newVal);
+      state.vals(newVal);
+      // see if it's another page and update accordinly =>
+      {
+        var name = location.hash.replace('#', '');
+        // print(name);
+        if (name.length == 0) {
+          var name = 'Main';
+          // print('reloaded main');
+
+          if (Callbacks) {
+            Callbacks(newVal);
+          }
+          UpdateDom();
+          return;
+        }
+        if (window.App[name] !== undefined) {
+          // print('reloaded');
+
+          if (Callbacks) {
+            Callbacks(newVal);
+          }
+          UpdateDom(window.App[name]());
+          return;
+        }
+      }
+      // <=
+
+      // UpdateDom();
+    }
   }
+
   if (Callback) {
-    Callback(initialValue)
+    Callback(initialValue);
   }
   return [state, setState]; // exposing functions for external use
+}
+
+function Listen(key, func) {
+  return document.addEventListener('keydown', (e) => {
+    // print(e.key);
+    if (e.key == key) {
+      func(e);
+    } else {
+      return e;
+    }
+  });
 }
 
 window.xtra8 = {
@@ -408,22 +540,33 @@ window.xtra8 = {
   req,
   useState,
   Router,
+  useEffect,
   Route,
+  Listen,
 };
 window.App = window.xtra8;
 
-export { React, render, State, States, Modules, req };
+export {
+  React,
+  render,
+  State,
+  States,
+  Modules,
+  req,
+  useState,
+  Router,
+  Route,
+  Listen,
+};
 
 window.onhashchange = (e) => {
   var name = location.hash.replace('#', '');
   // print(name);
   if (name.length == 0) {
-    return UpdateDom();
     var name = 'Main';
+    return UpdateDom();
   }
   if (window.App[name] !== undefined) {
-    return main(window.App[name]);
-  } else {
-    return UpdateDom();
+    return UpdateDom(window.App[name]());
   }
 };
