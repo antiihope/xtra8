@@ -5,12 +5,11 @@ const GenID = () => {
   return r;
 };
 
-window.print = console.log;
+window.logme = true;
+window.print = window.logme ? console.log : () => null;
 
-window.seeme = (e) => {
-  window['focused'] = e.target.id;
-};
 function SetValues(values, type, content) {
+  var page = ThisPageName();
   if (window.useEffect == undefined) {
     window.useEffect = {};
   }
@@ -24,7 +23,7 @@ function SetValues(values, type, content) {
   }
   var count = window.els[type];
   var id;
-  id = type + count;
+  id = page + type + count;
   // assign id if not already there  , for easier  Callback
 
   if (values == null) {
@@ -44,9 +43,9 @@ function SetValues(values, type, content) {
     // print(values.if);
     var statment = values.if;
     if (statment == false) {
-      return 'stop';
       delete values.if;
-      values.style = 'visibility: hidden;';
+      return 'stop';
+      values.style = 'display: none;';
       // return React.createElement(type, values, content);
     } else {
       // look for useeffect and call it or ignore it
@@ -79,7 +78,9 @@ var React = {
     if (type !== undefined) {
       if (typeof type == 'function') {
         // print(typeof type, type);
-        var newvalues = SetValues(values, type, content);
+        var newvalues = SetValues(values, type);
+        newvalues.id = type.name;
+        newvalues.children = content;
         return type(newvalues);
       }
     } else {
@@ -109,6 +110,7 @@ var React = {
         }
       }
     });
+
     return element;
   },
 };
@@ -135,6 +137,7 @@ function UpdateDom(newdom = false) {
   }
   var root = el('parent');
   var oldDom = root.childNodes[0];
+
   var matchs = newdom.innerHTML == oldDom.innerHTML;
 
   if (!matchs) {
@@ -145,7 +148,9 @@ function UpdateDom(newdom = false) {
     var oldDom = root.childNodes[0];
     var clone = oldDom.cloneNode(true);
 
+    //  STOP JUDGIN ME .. .I WAS DRUNK ↓↓
     function tryes(repeat = false) {
+      window.finished = false;
       try {
         function childtoarray(x) {
           // pass node element , turn it into object of its id and inner html
@@ -157,20 +162,23 @@ function UpdateDom(newdom = false) {
           z[1].push(x[0].parentElement.id);
           return z;
         }
+
         var old = childtoarray(oldDom.childNodes);
         var vso = childtoarray(newdom.childNodes);
         var cloneDom = childtoarray(clone.childNodes);
 
-        // print(old, vso);
+        // print(old[0].length, vso[0].length);
         // if parent element changed return false
+
         if (cloneDom[1][0] !== vso[1][0]) {
           if (!repeat) {
+            // print(cloneDom[1][0], vso[1][0]);
             if (!external) {
               newdom = window.vdom();
               return tryes(true);
             } else return false;
           } else {
-            print('tryed and false not same');
+            // print('tryed and false not same', cloneDom[1][0], vso[1][0]);
             return false;
           }
           // print(false);
@@ -180,7 +188,6 @@ function UpdateDom(newdom = false) {
             // print('tryes and success');
           }
         }
-
         try {
           vso[0].forEach((element) => {
             var index = vso[0].indexOf(element);
@@ -205,45 +212,46 @@ function UpdateDom(newdom = false) {
             });
           } else {
             if (!repeat) {
-              return tryes(true);
+              if (!external) {
+                newdom = window.vdom();
+                return tryes(true);
+              } else return false;
             } else {
-              print('tryes  and false');
               return false;
             }
           }
         } catch (error) {
           // console.log('error in tryes() in updateDom 1 ');
-          // console.clear();
 
           return false;
         }
 
-        // print(vso[0], old[0]);
-        // changed = changed + nesa.length;
-        // nesa.forEach((obj) => {
-        // var ele = el(obj.id);
-        // if (ele) {
-        //   ele.innerHTML = obj.inner;
-        // }
-        // });
         return true;
       } catch (error) {
         // print(error.message);
         // console.log('error in tryes() in updateDom');
-        // console.clear();
-
         return false;
       }
 
       return false;
     }
 
+    window.finished = true;
+
     if (tryes() == false) {
-      // print('returned false');
+      print('returned false');
       var div = document.createElement('div');
       div.id = 'parent';
       div.append(newdom);
       root.replaceWith(div);
+      window.finished = true;
+      window.finished = true;
+      if (window.onUpdate) {
+        window.onUpdate();
+        print('found on update');
+        window.finished = true;
+      }
+
       if (window.focused) {
         var focus = el(window.focused);
         if (focus) {
@@ -251,18 +259,29 @@ function UpdateDom(newdom = false) {
         }
       }
     }
+    if (window.onUpdate) {
+      print('found on update');
+      window.onUpdate();
+    }
+    window.els = {};
+    window.finished = true;
+
     return;
   }
 
+  window.finished = true;
+
   return;
 }
+// ↑↑↑ THIS WHOLE PART UPTHERE IS SO CONFUSING .. I DON EVEN KNOW HOW I WROTE IT ↑↑↑
 
-function main(x) {
+function INIT(x) {
   var root = el('parent');
   var div = document.createElement('div');
   div.id = 'parent';
   div.append(x());
   // print(div);
+
   root.replaceWith(div);
   if (window.focused) {
     var focus = el(window.focused);
@@ -273,36 +292,48 @@ function main(x) {
   return;
 }
 
-function whatPageIsThis() {
+//  Returns the current page name
+window.ThisPageName = () => {
   var name = location.hash.replace('#', '');
-  // print(name);
   if (name.length == 0) {
     var name = 'Main';
-    return null;
+    return 'Main';
   }
-  if (window.App[name] !== undefined) {
-    return window.App[name];
-  }
-}
+  return name;
+};
 
+//  Returns the current page function
+window.ThisPage = () => {
+  var name = location.hash.replace('#', '');
+  if (name.length == 0) {
+    var name = 'Main';
+    return 'Main';
+  }
+  if (window.APP[name] !== undefined) {
+    return window.APP[name];
+  } else return 'Main';
+};
+
+// MAIN THING , RENDERS ON DOM COMPLETE >> Sends passed function to INIT()
 function render(x) {
-  App.Modules[x.name] = x;
+  APP.Modules[x.name] = x;
   // print(x);
   window.vdom = x;
   let stateCheck = setInterval(() => {
     if (document.readyState === 'complete') {
       clearInterval(stateCheck);
-      var page = whatPageIsThis();
-      if (page == null) {
-        main(x);
+      var page = ThisPage();
+      if (page == 'Main') {
+        INIT(x);
         return;
       } else {
-        main(page);
+        INIT(page);
       }
     }
   }, 1);
 }
 
+// OLD THINGHY  =>=>=>=>=>=>=>
 function State(z, x, Callback = false) {
   if (x.length == 0) {
     // print('aha');
@@ -340,6 +371,8 @@ function State(z, x, Callback = false) {
   }
 }
 
+// <=  <=<= <= OLD THINGHY
+
 function States(obj) {
   for (const key in obj) {
     window[key] = obj[key];
@@ -352,7 +385,7 @@ function States(obj) {
     };
   }
 }
-
+//  ¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯
 async function getFetch(url) {
   var requestOptions = {
     method: 'GET',
@@ -366,8 +399,9 @@ async function getFetch(url) {
     })
     .catch((error) => print('error', error));
 }
-
+// ¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯¯\(o_o)/¯
 // get modules  , parse it , eval it , append it to html
+//  ¯\(o_o)/¯
 async function SetModulesFile(path, names) {
   names.forEach(async (name) => {
     var content = await getFetch(path + name);
@@ -381,6 +415,7 @@ async function SetModulesFile(path, names) {
   });
 }
 
+//Same thing  ..  I THOUGHT IT'S COOL ¯\(o_o)/¯
 async function req(file) {
   var content = await getFetch(file);
   var parsed = Babel.transform(content, { presets: ['env', 'react'] }).code;
@@ -392,18 +427,17 @@ async function req(file) {
   document.head.append(els);
 }
 
-// Set modules to access it from diffrent js files
-
+// Set modules takes the function name and assigns it to APP object on window and Modules Object
 var Modules = {
   SetModule: function (z, x) {
     var name = z.name;
     this[name] = z;
-    window.App[name] = z;
+    window.APP[name] = z;
   },
   SetModulesFile: SetModulesFile,
 };
 
-// set multi-ple pages at once
+// set multi-ple pages at once , almost useless LOL (•_•)
 function Router(z) {
   for (var key in z) {
     if (key.length == 0) {
@@ -413,36 +447,34 @@ function Router(z) {
       location.hash = key;
       return z[key]();
     }
-    window.App[key] = Callee;
+    window.APP[key] = Callee;
     print(key);
   }
 }
 
-// set page for hash
+// SET PAGE FOR HASH AND HASH FOR MODULE
 var Route = (x, z) => {
-  App.Modules[x] = z;
+  APP.Modules[x] = z;
   if (typeof z == 'function') {
     function Callee() {
       location.hash = x;
       return z();
     }
 
-    window.App[x] = Callee;
+    window.APP[x] = Callee;
   } else {
     function Callee() {
       location.hash = x;
       return z;
     }
 
-    window.App[x] = Callee;
+    window.APP[x] = Callee;
   }
 };
 
-// let value;
-
-var calls = 0;
-
 window.updates = {};
+
+// i really dont know dude I THOUGHT IT'S COOL ¯\(o_o)/¯
 
 function useEffect(fn, name) {
   if (window.useEffect == undefined) {
@@ -453,27 +485,32 @@ function useEffect(fn, name) {
     fn();
   }
 }
-
 function useState(initialValue, Callback = false) {
-  if (window.App.values === undefined) {
-    window.App.values = {};
+  if (window.APP.values === undefined) {
+    window.APP.values = {};
   }
   var id = GenID();
-  window.App.values[id] = initialValue;
+  window.APP.values[id] = initialValue;
 
   var state = {
     state: function state() {
-      return window.App.values[id];
+      return window.APP.values[id];
     },
     get val() {
-      return window.App.values[id];
+      return window.APP.values[id];
     },
     vals: (x) => {
-      window.App.values[id] = x;
+      window.APP.values[id] = x;
     },
   };
 
   function setState(newVal, Callbacks = false) {
+    window.els = {};
+    if (!window.Loaded) {
+      window.finished = true;
+      window.Loaded = true;
+    }
+
     try {
       clearTimeout(window.timeout);
       // print('cleared');
@@ -481,45 +518,80 @@ function useState(initialValue, Callback = false) {
       print('not there');
     }
 
+    //  WELL , we donna wanna call the update function for nothing  -_(0_0)_- , so we check if it's the same old value or not
     if (JSON.stringify(state.val) !== JSON.stringify(newVal)) {
-      // print(state.val, newVal);
-      state.vals(newVal);
-      // see if it's another page and update accordinly =>
-      {
-        var name = location.hash.replace('#', '');
-        // print(name);
-        if (name.length == 0) {
-          var name = 'Main';
-          // print('reloaded main');
+      if (window.finished) {
+        state.vals(newVal);
+        // see if it's another page and UPDATE accordinly =>
+        {
+          var name = location.hash.replace('#', '');
+          // print(name);
+          if (name.length == 0) {
+            var name = 'Main';
+            // print('reloaded main');
 
-          if (Callbacks) {
-            Callbacks(newVal);
-          }
-          UpdateDom();
-          return;
-        }
-        if (window.App[name] !== undefined) {
-          // print('reloaded');
+            if (Callbacks) {
+              Callbacks(newVal);
+            }
 
-          if (Callbacks) {
-            Callbacks(newVal);
+            UpdateDom();
           }
-          UpdateDom(window.App[name]());
-          return;
+          if (window.APP[name] !== undefined) {
+            // print('reloaded');
+            if (Callbacks) {
+              Callbacks(newVal);
+            }
+            UpdateDom(window.APP[name]());
+          }
         }
+        // <=
+        return;
       }
-      // <=
+      // if not finish updating , set a function to update things after UpdateDom() finishes
+      // this is to avoid multiple updates with (SetState*) at once causing the dom to change for every one ↓↓↓↓
 
-      // UpdateDom();
+      updates[id] = { newVal: newVal, Callbacks: Callbacks };
+
+      window.onUpdate = () => {
+        function WhatUpdates() {
+          var len = Object.keys(updates).length;
+
+          print('updating ', Object.keys(updates).length, ' key');
+          for (const key in updates) {
+            var newVal = updates[key]['newVal'];
+            window.APP.values[key] = newVal;
+            var Callbacks = updates[key]['Callbacks'];
+            if (Callbacks) Callbacks(newVal);
+
+            delete updates[key];
+          }
+          return len;
+        }
+        if (WhatUpdates() > 0) {
+          print('found on update');
+          UpdateDom();
+          window.finished = true;
+        } else {
+          delete window.onUpdate;
+          window.finished = true;
+        }
+        window.finished = true;
+      };
+
+      print('not finished');
+
+      return;
     }
+    return;
   }
 
   if (Callback) {
     Callback(initialValue);
   }
-  return [state, setState]; // exposing functions for external use
+  return [state, setState];
 }
 
+// Just a hook i like ↓↓↓↓↓
 function Listen(key, func) {
   return document.addEventListener('keydown', (e) => {
     // print(e.key);
@@ -544,7 +616,7 @@ window.xtra8 = {
   Route,
   Listen,
 };
-window.App = window.xtra8;
+window.APP = window.xtra8;
 
 export {
   React,
@@ -564,9 +636,16 @@ window.onhashchange = (e) => {
   // print(name);
   if (name.length == 0) {
     var name = 'Main';
+
     return UpdateDom();
   }
-  if (window.App[name] !== undefined) {
-    return UpdateDom(window.App[name]());
+
+  if (window.APP[name] !== undefined) {
+    return UpdateDom(window.APP[name]());
   }
 };
+
+// window.onpopstate = function (e) {
+//   print(e);
+//   e.preventDefault();
+// };
