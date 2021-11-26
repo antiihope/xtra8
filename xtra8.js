@@ -43,16 +43,17 @@ function SetValues(values, type, content) {
     // print(values.if);
     var statment = values.if;
     if (statment == false) {
-      delete values.if;
+      
       return 'stop';
       values.style = 'display: none;';
       // return React.createElement(type, values, content);
     } else {
       // look for useeffect and call it or ignore it
-      if (values.useEffect) {
-        if (typeof values.useEffect == 'function') {
+      var Checkin = values.useEffect;
+      if (Checkin) {
+        if (typeof Checkin == 'function') {
           if (!window.useEffect[id]) {
-            values.useEffect();
+            Checkin();
             window.useEffect[id] = true;
           }
         }
@@ -77,7 +78,15 @@ var React = {
     }
     if (type !== undefined) {
       if (typeof type == 'function') {
-        // print(typeof type, type);
+        if (type.useEffect) {
+          if (!window.useEffect) {
+            window.useEffect = {};
+          }
+          if (!window.useEffect[type.name]) {
+            window.useEffect[type.name] = true;
+            type.useEffect();
+          }
+        }
         var newvalues = SetValues(values, type);
         newvalues.id = type.name;
         newvalues.children = content;
@@ -476,15 +485,19 @@ window.updates = {};
 
 // i really dont know dude I THOUGHT IT'S COOL ¯\(o_o)/¯
 
-function useEffect(fn, name) {
-  if (window.useEffect == undefined) {
-    window.useEffect = {};
-  }
-  if (!window.useEffect[name]) {
-    window.useEffect[name] = true;
-    fn();
-  }
+function useEffect(fn, mainfn) {
+  mainfn.useEffect = fn;
+  // if (mainfn.id) {
+  //   if (window.useEffect == undefined) {
+  //     window.useEffect = {};
+  //   }
+  //   if (!window.useEffect[mainfn.name]) {
+  //     window.useEffect[mainfn.name] = true;
+  //     fn();
+  //   }
+  // }
 }
+
 function useState(initialValue, Callback = false) {
   if (window.APP.values === undefined) {
     window.APP.values = {};
@@ -644,8 +657,3 @@ window.onhashchange = (e) => {
     return UpdateDom(window.APP[name]());
   }
 };
-
-// window.onpopstate = function (e) {
-//   print(e);
-//   e.preventDefault();
-// };
