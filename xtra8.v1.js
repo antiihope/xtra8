@@ -586,7 +586,7 @@ window.onhashchange = (e) => {
   }
 };
 
-import * as NaminAnythingBlah from './babel.min.js';
+import * as NaminAnythingBlah from 'https://cdn.jsdelivr.net/gh/hazem223/xtra8@main/babel.min.js';
 
 window.fails = 0;
 window.succeed = 0;
