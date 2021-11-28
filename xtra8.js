@@ -30,6 +30,7 @@ function CheckType(type) {
   //   return 0;
   // }
 }
+
 function SET_VALUES(values, type, children) {
   var PAGE = ThisPageName();
   var COUNT = CheckType(type);
@@ -40,6 +41,7 @@ function SET_VALUES(values, type, children) {
       return 'stop';
     }
   }
+
   var id;
 
   id = PAGE + type + COUNT;
@@ -58,7 +60,7 @@ function SET_VALUES(values, type, children) {
   if (id.length == 0) id = id;
 
   // look for useeffect and call it or ignore it
-  var Checkin = values.useEffect || type.useEffect || false;
+  var Checkin = values.useEffect || false;
   if (Checkin) {
     if (typeof Checkin == 'function') {
       if (!window.useEffect[id]) {
@@ -136,6 +138,20 @@ Element.prototype.insertChildAtIndex = function (child, index) {
   }
 };
 
+function SaveValues() {
+  window['SelectValues'] = {};
+  document.querySelectorAll('select').forEach((el) => {
+    window['SelectValues'][el.id] = el.value;
+  });
+}
+
+function PutValues() {
+  document.querySelectorAll('select').forEach((el) => {
+    if (window['SelectValues'][el.id]) {
+      document.getElementById([el.id]).value = window['SelectValues'][el.id];
+    }
+  });
+}
 function UPDATE_DOM(newdom = false) {
   if (!window.Loaded) {
     print('not yet loaded');
@@ -151,7 +167,6 @@ function UPDATE_DOM(newdom = false) {
     external = false;
 
     els = {};
-
     var newdom = window.vdom();
   } else {
     external = newdom;
@@ -161,7 +176,6 @@ function UPDATE_DOM(newdom = false) {
   var oldDom = root.childNodes[0];
 
   var matchs = newdom.innerHTML == oldDom.innerHTML;
-
   if (!matchs) {
     window['olDom'] = oldDom;
     // what this function?! you ask
@@ -171,310 +185,117 @@ function UPDATE_DOM(newdom = false) {
 
     //  STOP JUDGIN ME .. .I WAS DRUNK ↓↓
     function tryes(repeat = false) {
-      window.fullscreen = document.fullscreenElement;
-
       window.finished = false;
       try {
-        function getElementAttrs(el) {
+        SaveValues();
+
+        function isEmpty(obj) {
+          return Object.keys(obj).length === 0;
+        }
+
+        function CheckSameParent(x, y) {
+          return x[0].parentElement.id == y[0].parentElement.id;
+        }
+
+        function TESTDIFF(oldDom, newdom) {
+          function el(x) {
+            return oldDom.querySelector('#' + x);
+          }
           var obj = {};
-          var arr = ['disabled', 'class', 'className', 'href', 'src', 'id'];
-          arr.forEach((attr) => {
-            obj[attr] = el[attr];
-          });
-          return obj;
-        }
+          var attrs = [
+            'disabled',
+            "style['cssText']",
+            'value',
+            'class',
+            'href',
+            'src',
+            'id',
+          ];
+          var olddomKids = oldDom.childNodes;
+          var newdomKids = newdom.childNodes;
+          if (!CheckSameParent(olddomKids, newdomKids)) return false;
 
-        function diff(arrayOne, arrayTwo) {
-          var arrayThree = [];
-          arrayOne.forEach((element) => {
-            arrayTwo.forEach((element2) => {
-              if (str(element) === str(element2)) {
-                arrayOne = arrayOne.filter(function (item) {
-                  return str(item) !== str(element);
-                });
-                // arrayOne.remove(element);
-              }
-            });
-          });
-          return arrayOne;
-        }
+          // print('<<<<<<<<TESTDIFF>>>>>>>');
 
-        function childtoarray(x, i = false) {
-          // pass node element , turn it into object of its id and inner html and attrs
-          var z = [[], []];
-          // push parent element id , to check if the page has change or not later
-          z[1].push(x[0].parentElement.id || false);
-
-          x.forEach((element) => {
-            var indexfromx = [...element.parentElement.children].indexOf(
-              element
-            );
-
-            var index = [...newdom.childNodes].indexOf(element);
-            var oldelement = oldDom.childNodes[index];
-            var value = false;
-            let children = false;
-            if (element.tagName == 'DIV') {
-              children = childtoarray(element.childNodes);
-            }
-            if (oldelement) {
-              value = oldelement;
-            }
-            if (i) {
-              els = i[indexfromx];
-              if (typeof els == 'object') {
-                value = els;
-              }
-            }
-            z[0].push({
-              inner: element.innerHTML || false,
-              id: element.id || value.id,
-              full: element || false,
-              attrs: element.attributes || false,
-              next: element.nextSibling,
-              parent: element.parentElement,
-              previous: element.previousSibling,
-              index: indexfromx,
-              children: children,
-            });
-          });
-          return z;
-        }
-
-        var cloneDom = childtoarray(clone.childNodes);
-        var old = childtoarray(oldDom.childNodes);
-        var vso = childtoarray(newdom.childNodes, old[0]);
-
-        // if parent element changed return false
-        if (cloneDom[1][0] !== vso[1][0]) {
-          if (!repeat) {
-            print('not repeat');
-            return tryes(true);
-          } else {
-            print('tryed and false not same', cloneDom[1][0], vso[1][0]);
-            print(newdom);
-            return false;
-          }
-        }
-        // DONT GO NEAR >>>>>>>>>>>>>>>>>>>>>>>>>>DONT GO NEAR
-        var Newi = diff(vso[0], cloneDom[0]);
-        var Oldi = diff(cloneDom[0], vso[0]);
-        // // print('new', Newi, 'old:', Oldi);
-
-        var count = 0;
-        function isInNew(id) {
-          for (const key in Newi) {
-            if (Newi[key].id == id) {
-              return true;
-            }
-          }
-          return false;
-        }
-        function OldiChange(Oldi) {
-          Oldi.forEach((element) => {
-            count = count + 1;
-            if (!isInNew(element.id)) {
-              var ele = el(element.id);
-              if (ele) ele.remove();
-              return;
-            }
-
-            try {
-              var NEWELEMENT = Newi[count];
-              if (NEWELEMENT) {
-                if (NEWELEMENT.inner == false) {
-                  el(NEWELEMENT.id).remove();
-                  return;
-                }
-                var ele = el(NEWELEMENT.id);
-                if (ele) {
-                  if (element.children) {
-                    var oldz = childtoarray(ele.childNodes);
-                    var zero = diff(oldz, NEWELEMENT.children);
-                    var one = diff(NEWELEMENT.children, oldz);
-                    zero.forEach((element) => {
-                      var ele = el(NEWELEMENT.id);
-                      if (ele) ele.replaceWith(NEWELEMENT.full);
-                    });
-                    // return NewiChange(zero);
-                    return;
-                  }
-                  var NewAttrs = getElementAttrs(NEWELEMENT.full);
-                  var OldAttrs = getElementAttrs(element.full);
-                  if (str(NewAttrs) == str(OldAttrs)) {
-                    // print('same');
-                    ele.innerHTML = element.full.innerHTML;
-                    return;
-                  } else {
-                    ele.replaceWith(NEWELEMENT.full);
-                  }
-                } else {
-                  var ele = el(element.id);
-                  if (ele) {
-                    ele.replaceWith(NEWELEMENT.full);
-                    return;
-                  }
-                }
-              }
-            } catch (error) {
-              return;
+          // REMOVES ITEMS THAT ARE NOT IN NEWDOM
+          olddomKids.forEach((element) => {
+            var ele = newdom.querySelector('#' + element.id);
+            if (!ele) {
+              element.remove();
             }
           });
-        }
-        function NewiChange(Newi) {
-          Newi.forEach((element) => {
-            if (element.id) {
-              var ele = el(element.id);
-
-              if (ele) {
-                if (element.children) {
-                  var oldz = childtoarray(ele.childNodes);
-                  var zero = diff(oldz, element.children);
-                  var one = diff(element.children, oldz);
-                  zero.forEach((element) => {
-                    var ele = el(element.id);
-                    if (ele) ele.replaceWith(element.full);
-                  });
-                  // return NewiChange(zero);
-                  return;
-                }
-                var NewAttrs = getElementAttrs(element.full);
-                var OldAttrs = getElementAttrs(ele);
-                if (str(NewAttrs) == str(OldAttrs)) {
-                  // print('same');
-                  ele.innerHTML = element.full.innerHTML;
-                  return;
-                } else {
-                  print('changed', element.id);
-                  ele.replaceWith(element.full);
-                }
-              }
-              // print(element);
-              var parent = element.parent;
-              var index = element.index;
-              var realParent = el(parent.id);
-              if (realParent) {
-                realParent.insertChildAtIndex(element.full, index);
-              }
-            } else {
-            }
-          });
-        }
-
-        window.fullscreen = document.fullscreenElement;
-
-        OldiChange(Oldi);
-        NewiChange(Newi);
-        if (fullscreen) {
-          el(fullscreen.id).requestFullscreen();
-        }
-
-        // DONT GO NEAR<<<<<<<<<<<<<<<<<<<<<<<<<<DONT GO NEAR
-        // oldDom = root.childNodes[0];
-        // if (oldDom.innerHTML == newdom.innerHTML) {
-        //   // print('YAAAAY');
-        //   window.finished = true;
-        //   window.succeed = window.succeed + 1;
-        //   return true;
-        // } else {
-        //   // print('NOOO');
-        //   print('New:', Newi, 'Old:', Oldi);
-        //   window.finished = true;
-        //   window.fails = window.fails + 1;
-        //   return false;
-        // }
-        // print('New:', Newi, 'Old:', Oldi);
-
-        return true;
-
-        if (!repeat) {
-          return tryes(true);
-        }
-        window.finished = true;
-
-        // print(diss, cloneDom[0]);
-        // breakS
-
-        if (cloneDom[1][0] !== vso[1][0]) {
-          if (!repeat) {
-            if (!external) {
-              newdom = window.vdom();
-              return tryes(true);
-            } else return false;
-          } else {
-            print('tryed and false not same', cloneDom[1][0], vso[1][0]);
-            return false;
-          }
-        }
-        // print(false);
-        try {
-          vso[0].forEach((element) => {
-            var index = vso[0].indexOf(element);
-            var olds = cloneDom[0][index];
-            if (olds.inner !== element.inner) {
-              var ele = clone.querySelector('#' + olds.id);
-              if (ele) {
-                ele.innerHTML = element.inner;
-              } else {
-                var id = olds.id;
-                var ele = el(id);
-                if (ele) {
-                  ele.remove();
-                }
-              }
-            }
-          });
-          if (clone.innerHTML == newdom.innerHTML) {
-            vso[0].forEach((element) => {
-              var index = vso[0].indexOf(element);
-              var olds = old[0][index];
-              if (olds.inner !== element.inner) {
-                var ele = el(olds.id);
-                if (ele) {
-                  ele.innerHTML = element.inner;
-                } else {
-                  var id = olds.id;
-                  var ele = el(id);
-                  if (ele) {
-                    ele.remove();
-                  }
-                }
-              }
-            });
-          } else {
-            if (!repeat) {
-              if (!external) {
-                newdom = window.vdom();
-                return tryes(true);
-              } else return false;
-            } else {
-              print('tryed and false not same', cloneDom[1][0], vso[1][0]);
+          newdomKids.forEach((element) => {
+            if (!element.id) {
               return false;
             }
-          }
-        } catch (error) {
-          console.log('error in tryes() in updateDom 1 ');
 
-          return false;
+            var thisID = element.id;
+            obj[thisID] = {
+              attrs: {},
+              inner: 'IGNORE',
+            };
+            var index = [...element.parentElement.children].indexOf(element);
+            var oldElement = el(thisID);
+
+            if (oldElement) {
+              if (element.tagName == 'DIV') {
+                return TESTDIFF(oldElement, element);
+              }
+              attrs.forEach((attr) => {
+                if (oldElement[attr] !== element[attr]) {
+                  if (attr == 'value') {
+                    return;
+                  }
+                  obj[thisID]['attrs'][attr] = element[attr];
+                  // print(attr, element[attr]);
+                }
+              });
+              if (oldElement.innerHTML !== element.innerHTML) {
+                obj[thisID]['inner'] = element.innerHTML;
+              }
+            } else {
+              oldDom.insertChildAtIndex(element, index);
+            }
+          });
+          for (const key in obj) {
+            if (isEmpty(obj[key]['attrs']) && obj[key]['inner'] == 'IGNORE') {
+              delete obj[key];
+            }
+          }
+          for (const key in obj) {
+            var ele = el(key);
+            var attrs = obj[key]['attrs'];
+            if (ele) {
+              for (const attr in attrs) {
+                ele[attr] = attrs[attr];
+              }
+              if (obj[key]['inner'] !== 'IGNORE') {
+                ele.innerHTML = obj[key]['inner'];
+              }
+            }
+          }
+          PutValues();
+          window.finished = true;
+          // print('<<<<<<<<TESTDIFF>>>>>>');
         }
 
-        return true;
+        return TESTDIFF(oldDom, newdom);
       } catch (error) {
-        print(error);
-        console.log('error in tryes() in updateDom');
-        return false;
+        if (!repeat) {
+          tryes(true);
+        } else return false;
       }
-
-      return false;
     }
-
+    // ↑↑↑ STOP JUDGIN ME .. .I WAS DRUNK ↑↑↑
     if (tryes() == false) {
+      SaveValues();
       window.finished = true;
-      print('returned false');
+      // print('returned false');
       var div = document.createElement('div');
       div.id = 'parent';
       div.append(ThisPage()());
       root.replaceWith(div);
+      PutValues();
       if (window.focused) {
         var focus = el(window.focused);
         if (focus) {
@@ -482,12 +303,14 @@ function UPDATE_DOM(newdom = false) {
         }
       }
     }
+    PutValues();
     window.finished = true;
 
     if (window.onUpdate) {
       print('found on update');
       window.onUpdate();
     }
+
     els = {};
     window.finished = true;
 
@@ -505,7 +328,6 @@ function INIT(x) {
   div.id = 'parent';
   div.append(x());
   // print(div);
-
   root.replaceWith(div);
   if (window.focused) {
     var focus = el(window.focused);
@@ -573,6 +395,7 @@ async function getFetch(url) {
     .catch((error) => print('error', error));
 }
 // get modules  , parse it , eval it , append it to html
+// YES IT'S USELESS AND SLOW .. DUH
 async function SetModulesFile(path, names) {
   names.forEach(async (name) => {
     var children = await getFetch(path + name);
@@ -585,20 +408,6 @@ async function SetModulesFile(path, names) {
     return true;
   });
 }
-
-//Same thing  ..  I THOUGHT IT'S COOL ¯\(o_o)/¯
-// async function req(file) {
-//   var children = await getFetch(file);
-//   var parsed = Babel.transform(children, { presets: ['env', 'react'] }).code;
-//   var els = document.createElement('script');
-//   els.type = 'module';
-//   els.innerHTML = parsed;
-//   window.eval(parsed);
-//   return parsed;
-//   document.head.append(els);
-// }
-
-// Set modules takes the function name and assigns it to APP object on window and Modules Object
 
 var Modules = {
   SetModule: function (z, x) {
@@ -658,11 +467,6 @@ var Route = (x, z) => {
 };
 
 window.updates = {};
-// i really dont know dude I THOUGHT IT'S COOL ¯\(o_o)/¯
-
-function useEffect(fn, mainfn) {
-  mainfn.useEffect = fn;
-}
 
 function useState(initialValue, Callback = false) {
   if (window.APP.values === undefined) {
@@ -693,7 +497,7 @@ function useState(initialValue, Callback = false) {
       clearTimeout(window.timeout);
       // print('cleared');
     } catch (error) {
-      print('not there');
+      // print('not there');
     }
 
     //  WELL , we donna wanna call the update function for nothing  -_(0_0)_- , so we check if it's the same old value or not
@@ -701,7 +505,6 @@ function useState(initialValue, Callback = false) {
       // print('updted', id, newVal);...
       state.vals(newVal);
       if (window.finished) {
-        // see if it's another page and UPDATE accordinly =>
         if (Callbacks) Callbacks(newVal);
         return UPDATE_DOM(ThisPage());
       } else {
@@ -760,14 +563,13 @@ window.xtra8 = {
   Modules,
   useState,
   Router,
-  useEffect,
   Route,
   Listen,
 };
 window.APP = window.xtra8;
 APP.Routes = {};
 
-export { React, render, Modules, useState, Router, useEffect, Route, Listen };
+export { React, render, Modules, useState, Router, Route, Listen };
 
 window.onhashchange = (e) => {
   var name = location.hash.replace('#', '');
@@ -781,8 +583,6 @@ window.onhashchange = (e) => {
   if (window.APP.Routes[name] !== undefined) {
     return UPDATE_DOM(window.APP.Routes[name]);
   } else {
-    // location.hash = '';
-    // UPDATE_DOM();
   }
 };
 
@@ -790,3 +590,6 @@ import * as NaminAnythingBlah from './babel.min.js';
 
 window.fails = 0;
 window.succeed = 0;
+
+window.Loaded = true;
+window.finished = true;
