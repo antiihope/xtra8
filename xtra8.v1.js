@@ -1,11 +1,14 @@
+let Routes = {};
+let _values = {};
+let els = {};
+let str = JSON.stringify;
+
 const GenID = () => {
   let r = (Math.random() + 1).toString(36).substring(7);
   return r;
 };
 
 window.print = console.log;
-let els = {};
-var str = JSON.stringify;
 
 function CheckType(type) {
   if (window.useEffect == undefined) {
@@ -21,14 +24,6 @@ function CheckType(type) {
   }
 
   return els[type];
-  // try {
-  //   z = document.querySelector('#parent');
-  //   z = z.firstElementChild;
-  //   var e = z.querySelectorAll(type).length + 1;
-  //   return e + z.childElementCount;
-  // } catch (error) {
-  //   return 0;
-  // }
 }
 
 function SET_VALUES(values, type, children) {
@@ -41,13 +36,9 @@ function SET_VALUES(values, type, children) {
       return 'stop';
     }
   }
-
   var id;
-
   id = PAGE + type + COUNT;
-
   // assign id if not already there  , for easier  Callback
-
   if (values == null) {
     var values = {};
 
@@ -129,6 +120,7 @@ window.React = React;
 window.el = (x) => {
   return document.getElementById(x);
 };
+
 Element.prototype.insertChildAtIndex = function (child, index) {
   if (!index) index = 0;
   if (index >= this.children.length) {
@@ -152,6 +144,7 @@ function PutValues() {
     }
   });
 }
+
 function UPDATE_DOM(newdom = false) {
   if (!window.Loaded) {
     print('not yet loaded');
@@ -183,8 +176,14 @@ function UPDATE_DOM(newdom = false) {
     var oldDom = root.childNodes[0];
     var clone = oldDom.cloneNode(true);
 
+    function CheckUpdates() {
+      if (window.onUpdate) {
+        print('found on update');
+        window.onUpdate();
+      }
+    }
     //  STOP JUDGIN ME .. .I WAS DRUNK ↓↓
-    function tryes(repeat = false) {
+    function Proccess(repeat = false) {
       window.finished = false;
       try {
         SaveValues();
@@ -193,11 +192,11 @@ function UPDATE_DOM(newdom = false) {
           return Object.keys(obj).length === 0;
         }
 
-        function CheckSameParent(x, y) {
+        function SameParent(x, y) {
           return x[0].parentElement.id == y[0].parentElement.id;
         }
 
-        function TESTDIFF(oldDom, newdom) {
+        function DIFF(oldDom, newdom) {
           function el(x) {
             return oldDom.querySelector('#' + x);
           }
@@ -206,25 +205,31 @@ function UPDATE_DOM(newdom = false) {
             'disabled',
             "style['cssText']",
             'value',
+            'media',
             'class',
             'href',
+            'oncopy',
+            'controls',
             'src',
+            'onclick',
+            'onblur',
+            'draggable',
             'id',
           ];
-          var olddomKids = oldDom.childNodes;
-          var newdomKids = newdom.childNodes;
-          if (!CheckSameParent(olddomKids, newdomKids)) return false;
+          var OLD_KIDS = oldDom.childNodes;
+          var NEW_KIDS = newdom.childNodes;
+          if (!SameParent(OLD_KIDS, NEW_KIDS)) return false;
 
-          // print('<<<<<<<<TESTDIFF>>>>>>>');
+          // print('<<<<<<<<DIFF>>>>>>>');
 
           // REMOVES ITEMS THAT ARE NOT IN NEWDOM
-          olddomKids.forEach((element) => {
+          OLD_KIDS.forEach((element) => {
             var ele = newdom.querySelector('#' + element.id);
             if (!ele) {
               element.remove();
             }
           });
-          newdomKids.forEach((element) => {
+          NEW_KIDS.forEach((element) => {
             if (!element.id) {
               return false;
             }
@@ -239,7 +244,7 @@ function UPDATE_DOM(newdom = false) {
 
             if (oldElement) {
               if (element.tagName == 'DIV') {
-                return TESTDIFF(oldElement, element);
+                return DIFF(oldElement, element);
               }
               attrs.forEach((attr) => {
                 if (oldElement[attr] !== element[attr]) {
@@ -276,18 +281,18 @@ function UPDATE_DOM(newdom = false) {
           }
           PutValues();
           window.finished = true;
-          // print('<<<<<<<<TESTDIFF>>>>>>');
+          // print('<<<<<<<<DIFF>>>>>>');
         }
 
-        return TESTDIFF(oldDom, newdom);
+        return DIFF(oldDom, newdom);
       } catch (error) {
         if (!repeat) {
-          tryes(true);
+          Proccess(true);
         } else return false;
       }
     }
     // ↑↑↑ STOP JUDGIN ME .. .I WAS DRUNK ↑↑↑
-    if (tryes() == false) {
+    if (Proccess() == false) {
       SaveValues();
       window.finished = true;
       // print('returned false');
@@ -295,6 +300,7 @@ function UPDATE_DOM(newdom = false) {
       div.id = 'parent';
       div.append(ThisPage()());
       root.replaceWith(div);
+      CheckUpdates();
       PutValues();
       if (window.focused) {
         var focus = el(window.focused);
@@ -305,11 +311,7 @@ function UPDATE_DOM(newdom = false) {
     }
     PutValues();
     window.finished = true;
-
-    if (window.onUpdate) {
-      print('found on update');
-      window.onUpdate();
-    }
+    CheckUpdates();
 
     els = {};
     window.finished = true;
@@ -353,29 +355,30 @@ window.ThisPage = () => {
   var name = location.hash.replace('#', '');
   if (name.length == 0) {
     var name = 'Main';
-    return APP.Routes['Main'];
+    return Routes['Main'];
   }
-  if (window.APP.Routes[name] !== undefined) {
-    return window.APP.Routes[name];
-  } else return APP.Routes['Main'];
+  if (Routes[name] !== undefined) {
+    return Routes[name];
+  } else return Routes['Main'];
 };
 
 // MAIN THING , RENDERS ON DOM COMPLETE >> Sends passed function to INIT()
 function render(x) {
-  function Mok() {
+  function Mok(props = {}) {
     var React = React;
     var SET_VALUES = SET_VALUES;
     els = {};
-    return x();
+    return x(props);
   }
   APP.Modules['Main'] = Mok;
-  APP.Routes['Main'] = Mok;
+  Routes['Main'] = Mok;
 
-  window.vdom = x;
   let stateCheck = setInterval(() => {
     if (document.readyState === 'complete') {
       clearInterval(stateCheck);
       var page = ThisPage();
+      window.vdom = x;
+
       INIT(page);
     }
   }, 1);
@@ -409,7 +412,7 @@ async function SetModulesFile(path, names) {
   });
 }
 
-var Modules = {
+const Modules = {
   SetModule: function (z, x) {
     var name = z.name;
     window.APP[name] = (x) => {
@@ -420,7 +423,6 @@ var Modules = {
     };
     this[name] = window.APP[name];
   },
-  SetModulesFile: SetModulesFile,
 };
 
 // set multi-ple pages at once , almost useless LOL (•_•)
@@ -440,72 +442,67 @@ function Router(z) {
 
 // SET PAGE FOR HASH AND HASH FOR MODULE
 
-var Route = (x, z) => {
+const Route = (x, z) => {
   APP.Modules[x] = z;
   if (typeof z == 'function') {
-    function Callee() {
+    function Callee(props = {}) {
+      window.finished = false;
       var React = React;
       var SET_VALUES = SET_VALUES;
       els = {};
       location.hash = x;
-      return z();
+      window.finished = true;
+      return z(props);
     }
 
-    window.APP.Routes[x] = Callee;
+    Routes[x] = Callee;
   } else {
     function Callee() {
+      window.finished = false;
+
       var React = React;
       var SET_VALUES = SET_VALUES;
       location.hash = x;
       els = {};
-
+      window.finished = true;
       return z;
     }
-
-    window.APP.Routes[x] = Callee;
+    Routes[x] = Callee;
   }
 };
 
 window.updates = {};
 
-function useState(initialValue, Callback = false) {
-  if (window.APP.values === undefined) {
-    window.APP.values = {};
+function useState(initialValue, Callback = () => {}) {
+  if (_values === undefined) {
+    _values = {};
   }
   var id = GenID();
-  window.APP.values[id] = initialValue;
+  _values[id] = initialValue;
 
   var state = {
-    state: function state() {
-      return window.APP.values[id];
-    },
     get val() {
-      return window.APP.values[id];
+      return _values[id];
     },
     vals: (x) => {
-      window.APP.values[id] = x;
+      _values[id] = x;
     },
   };
 
-  function setState(newVal, Callbacks = false) {
+  function setState(newVal, Callbacks = () => {}) {
+    if (newVal == undefined) {
+      return;
+    }
     els = {};
     if (!window.Loaded) {
       window.finished = true;
     }
 
-    try {
-      clearTimeout(window.timeout);
-      // print('cleared');
-    } catch (error) {
-      // print('not there');
-    }
-
     //  WELL , we donna wanna call the update function for nothing  -_(0_0)_- , so we check if it's the same old value or not
     if (str(state.val) !== str(newVal)) {
-      // print('updted', id, newVal);...
       state.vals(newVal);
       if (window.finished) {
-        if (Callbacks) Callbacks(newVal);
+        Callbacks(newVal);
         return UPDATE_DOM(ThisPage());
       } else {
         print('not finished');
@@ -516,9 +513,9 @@ function useState(initialValue, Callback = false) {
             print('updating ', Object.keys(updates).length, ' key');
             for (const key in updates) {
               var newVal = updates[key]['newVal'];
-              window.APP.values[key] = newVal;
+              _values[key] = newVal;
               var Callbacks = updates[key]['Callbacks'];
-              if (Callbacks) Callbacks(newVal);
+              Callbacks(newVal);
               delete updates[key];
             }
             return len;
@@ -539,15 +536,13 @@ function useState(initialValue, Callback = false) {
     return;
   }
 
-  if (Callback) {
-    Callback(initialValue);
-  }
+  Callback(initialValue);
   return [state, setState];
 }
 
 // Just a hook i like ↓↓↓↓↓
-function Listen(key, func) {
-  return document.addEventListener('keydown', (e) => {
+function listen(key, func) {
+  return document.addEventlistener('keydown', (e) => {
     // print(e.key);
     if (e.key == key) {
       func(e);
@@ -556,32 +551,29 @@ function Listen(key, func) {
     }
   });
 }
-
-window.xtra8 = {
+let xtra8 = {
   React,
   render,
   Modules,
   useState,
   Router,
   Route,
-  Listen,
+  listen,
+  Routes,
 };
-window.APP = window.xtra8;
-APP.Routes = {};
-
-export { React, render, Modules, useState, Router, Route, Listen };
+window.xtra8 = xtra8;
+window.APP = xtra8;
 
 window.onhashchange = (e) => {
   var name = location.hash.replace('#', '');
-  // print(name);
   if (name.length == 0) {
     var name = 'Main';
 
     return UPDATE_DOM();
   }
 
-  if (window.APP.Routes[name] !== undefined) {
-    return UPDATE_DOM(window.APP.Routes[name]);
+  if (Routes[name] !== undefined) {
+    return UPDATE_DOM(Routes[name]);
   } else {
   }
 };
