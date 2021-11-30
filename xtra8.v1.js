@@ -1,3 +1,5 @@
+import * as NaminAnythingBlah from 'https://cdn.jsdelivr.net/gh/hazem223/xtra8@main/babel.min.js';
+
 let Routes = {};
 let _values = {};
 let els = {};
@@ -542,7 +544,7 @@ function useState(initialValue, Callback = () => {}) {
 
 // Just a hook i like ↓↓↓↓↓
 function listen(key, func) {
-  return document.addEventlistener('keydown', (e) => {
+  return document.addEventListener('keydown', (e) => {
     // print(e.key);
     if (e.key == key) {
       func(e);
@@ -577,8 +579,6 @@ window.onhashchange = (e) => {
   } else {
   }
 };
-
-import * as NaminAnythingBlah from 'https://cdn.jsdelivr.net/gh/hazem223/xtra8@main/babel.min.js';
 
 window.fails = 0;
 window.succeed = 0;
