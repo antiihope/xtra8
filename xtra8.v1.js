@@ -4,10 +4,32 @@ let Routes = {};
 let _values = {};
 let els = {};
 let str = JSON.stringify;
+let Blue = [];
+
+window.hashCode = function (s) {
+  var i = s.split('').reduce(function (a, b) {
+    a = (a << 5) - a + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+  return parseInt(i);
+};
 
 const GenID = () => {
   let r = (Math.random() + 1).toString(36).substring(7);
   return r;
+};
+
+String.prototype.hashCode = function () {
+  var hash = 0,
+    i,
+    chr;
+  if (this.length === 0) return hash;
+  for (i = 0; i < this.length; i++) {
+    chr = this.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return parseInt(hash);
 };
 
 window.print = console.log;
@@ -28,40 +50,33 @@ function CheckType(type) {
   return els[type];
 }
 
-function SET_VALUES(values, type, children) {
+function xtraid(type) {
   var PAGE = ThisPageName();
   var COUNT = CheckType(type);
+  var id;
+  id = PAGE + type + COUNT;
+  return btoa(id).replaceAll('=', '');
+}
 
+function SET_VALUES(values, type) {
   if (values == null) values = {};
   if (values.hasOwnProperty('if')) {
     if (!values.if || values.if == undefined) {
       return 'stop';
     }
   }
-  var id;
-  id = PAGE + type + COUNT;
-  // assign id if not already there  , for easier  Callback
-  if (values == null) {
-    var values = {};
-
-    values.id = id;
-  }
-
-  if (values.id == undefined) values.id = id;
-  var id = values.id;
-
-  if (id.length == 0) id = id;
-
-  // look for useeffect and call it or ignore it
   var Checkin = values.useEffect || false;
   if (Checkin) {
+    var id = Checkin.toString().hashCode();
     if (typeof Checkin == 'function') {
       if (!window.useEffect[id]) {
+        print('Checkin');
         Checkin();
         window.useEffect[id] = true;
       }
     }
   }
+
   return values;
 }
 
@@ -71,15 +86,16 @@ var React = {
       print(type, values);
     }
 
-    var props = SET_VALUES(values, type, children.length);
+    var id = xtraid(type);
 
+    var props = SET_VALUES(values, type, id);
     if (props == 'stop') {
       return '';
     }
 
     if (type !== undefined) {
       if (typeof type == 'function') {
-        var props = SET_VALUES(values, type, children.length);
+        var props = SET_VALUES(values, type, id);
         props.id = type.name;
 
         props.children = children;
@@ -114,6 +130,8 @@ var React = {
       }
     });
 
+    element.setAttribute('key', id);
+
     return element;
   },
 };
@@ -132,22 +150,32 @@ Element.prototype.insertChildAtIndex = function (child, index) {
   }
 };
 
+Element.prototype.get = function (x) {
+  return this.querySelector('[key="' + x + '"]');
+};
+document.get = Element.prototype.get;
+
+Element.prototype.key = function () {
+  return this.getAttribute('key');
+};
+
 function SaveValues() {
   window['SelectValues'] = {};
   document.querySelectorAll('select').forEach((el) => {
-    window['SelectValues'][el.id] = el.value;
+    window['SelectValues'][el.key()] = el.value;
   });
 }
 
 function PutValues() {
   document.querySelectorAll('select').forEach((el) => {
-    if (window['SelectValues'][el.id]) {
-      document.getElementById([el.id]).value = window['SelectValues'][el.id];
+    if (window['SelectValues'][el.key()]) {
+      document.get(el.key()).value = window['SelectValues'][el.key()];
     }
   });
 }
 
 function UPDATE_DOM(newdom = false) {
+  els = {};
   if (!window.Loaded) {
     print('not yet loaded');
     window.finished = true;
@@ -155,14 +183,12 @@ function UPDATE_DOM(newdom = false) {
     return;
   }
 
-  window['focused'] = document.activeElement.id;
+  window['focused'] = document.activeElement.key();
   var external;
-  external = true;
   if (newdom == false) {
-    external = false;
-
     els = {};
     var newdom = window.vdom();
+    external = window.vdom;
   } else {
     external = newdom;
     newdom = external();
@@ -184,7 +210,17 @@ function UPDATE_DOM(newdom = false) {
         window.onUpdate();
       }
     }
-    //  STOP JUDGIN ME .. .I WAS DRUNK ↓↓
+    function removeItemAll(arr, value) {
+      var i = 0;
+      while (i < arr.length) {
+        if (arr[i] === value) {
+          arr.splice(i, 1);
+        } else {
+          ++i;
+        }
+      }
+      return arr;
+    }
     function Proccess(repeat = false) {
       window.finished = false;
       try {
@@ -195,15 +231,23 @@ function UPDATE_DOM(newdom = false) {
         }
 
         function SameParent(x, y) {
-          return x[0].parentElement.id == y[0].parentElement.id;
-        }
+          var ik = x[0].key() == y[0].key();
 
+          return ik;
+        }
+        var OLD_KIDS = oldDom.childNodes;
+        var NEW_KIDS = newdom.childNodes;
+        if (!SameParent(OLD_KIDS, NEW_KIDS)) {
+          print(oldDom, newdom);
+
+          return false;
+        }
         function DIFF(oldDom, newdom) {
-          function el(x) {
-            return oldDom.querySelector('#' + x);
-          }
           var obj = {};
-          var attrs = [
+
+          var OLD_KIDS = oldDom.childNodes;
+          var NEW_KIDS = newdom.childNodes;
+          var what = [
             'disabled',
             "style['cssText']",
             'value',
@@ -213,38 +257,42 @@ function UPDATE_DOM(newdom = false) {
             'oncopy',
             'controls',
             'src',
+            'hidden',
             'onclick',
             'onblur',
             'draggable',
             'id',
           ];
-          var OLD_KIDS = oldDom.childNodes;
-          var NEW_KIDS = newdom.childNodes;
-          if (!SameParent(OLD_KIDS, NEW_KIDS)) return false;
 
           // print('<<<<<<<<DIFF>>>>>>>');
 
           // REMOVES ITEMS THAT ARE NOT IN NEWDOM
           OLD_KIDS.forEach((element) => {
-            var ele = newdom.querySelector('#' + element.id);
+            if (!element.attributes) {
+              return false;
+            }
+            var ele = newdom.get(element.key());
             if (!ele) {
               element.remove();
             }
           });
           NEW_KIDS.forEach((element) => {
-            if (!element.id) {
+            if (!element.attributes) {
               return false;
             }
 
-            var thisID = element.id;
+            var thisID = element.key();
             obj[thisID] = {
               attrs: {},
               inner: 'IGNORE',
             };
             var index = [...element.parentElement.children].indexOf(element);
-            var oldElement = el(thisID);
+            var oldElement = oldDom.get(thisID);
 
             if (oldElement) {
+              var newattrs = element.getAttributeNames();
+              newattrs = removeItemAll(newattrs, 'style');
+              var attrs = [...newattrs, ...what];
               if (element.tagName == 'DIV') {
                 return DIFF(oldElement, element);
               }
@@ -253,7 +301,8 @@ function UPDATE_DOM(newdom = false) {
                   if (attr == 'value') {
                     return;
                   }
-                  obj[thisID]['attrs'][attr] = element[attr];
+                  oldElement[attr] = element[attr];
+                  // obj[thisID]['attrs'][attr] = element[attr];
                   // print(attr, element[attr]);
                 }
               });
@@ -270,7 +319,7 @@ function UPDATE_DOM(newdom = false) {
             }
           }
           for (const key in obj) {
-            var ele = el(key);
+            var ele = oldDom.get(key);
             var attrs = obj[key]['attrs'];
             if (ele) {
               for (const attr in attrs) {
@@ -283,6 +332,7 @@ function UPDATE_DOM(newdom = false) {
           }
           PutValues();
           window.finished = true;
+          // el('shadow').remove();
           // print('<<<<<<<<DIFF>>>>>>');
         }
 
@@ -295,11 +345,12 @@ function UPDATE_DOM(newdom = false) {
     }
     // ↑↑↑ STOP JUDGIN ME .. .I WAS DRUNK ↑↑↑
     if (Proccess() == false) {
+      // el('shadow').remove();
       SaveValues();
       window.finished = true;
-      // print('returned false');
+      print('returned false');
       var div = document.createElement('div');
-      div.id = 'parent';
+      div.setAttribute('id', 'parent');
       div.append(ThisPage()());
       root.replaceWith(div);
       CheckUpdates();
@@ -329,7 +380,8 @@ function UPDATE_DOM(newdom = false) {
 function INIT(x) {
   var root = el('parent');
   var div = document.createElement('div');
-  div.id = 'parent';
+  div.setAttribute('id', 'parent');
+
   div.append(x());
   // print(div);
   root.replaceWith(div);
@@ -379,8 +431,7 @@ function render(x) {
     if (document.readyState === 'complete') {
       clearInterval(stateCheck);
       var page = ThisPage();
-      window.vdom = x;
-
+      window.vdom = Mok;
       INIT(page);
     }
   }, 1);
@@ -475,7 +526,7 @@ const Route = (x, z) => {
 
 window.updates = {};
 
-function useState(initialValue, Callback = () => {}) {
+function useState(initialValue, Callback = () => {}, redux = false) {
   if (_values === undefined) {
     _values = {};
   }
@@ -506,33 +557,6 @@ function useState(initialValue, Callback = () => {}) {
       if (window.finished) {
         Callbacks(newVal);
         return UPDATE_DOM(ThisPage());
-      } else {
-        print('not finished');
-        updates[id] = { newVal: newVal, Callbacks: Callbacks };
-        window.onUpdate = () => {
-          function WhatUpdates() {
-            var len = Object.keys(updates).length;
-            print('updating ', Object.keys(updates).length, ' key');
-            for (const key in updates) {
-              var newVal = updates[key]['newVal'];
-              _values[key] = newVal;
-              var Callbacks = updates[key]['Callbacks'];
-              Callbacks(newVal);
-              delete updates[key];
-            }
-            return len;
-          }
-          if (WhatUpdates() > 0) {
-            print('found on update');
-            UPDATE_DOM();
-            window.finished = true;
-          } else {
-            window.finished = true;
-            delete window.onUpdate;
-          }
-        };
-
-        return;
       }
     }
     return;
