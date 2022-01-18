@@ -1,5 +1,3 @@
-import * as NaminAnythingBlah from 'https://cdn.jsdelivr.net/gh/hazem223/xtra8@main/babel.min.js';
-
 let Routes = {};
 let _values = {};
 let els = {};
@@ -70,7 +68,6 @@ function SET_VALUES(values, type) {
     var id = Checkin.toString().hashCode();
     if (typeof Checkin == 'function') {
       if (!window.useEffect[id]) {
-        print('Checkin');
         Checkin();
         window.useEffect[id] = true;
       }
@@ -129,6 +126,10 @@ var React = {
         }
       }
     });
+
+    for (const key in props.style) {
+      element.style.setProperty(key, props.style[key]);
+    }
 
     element.setAttribute('key', id);
 
@@ -193,11 +194,14 @@ function UPDATE_DOM(newdom = false) {
     external = newdom;
     newdom = external();
   }
+
   var root = el('parent');
   var oldDom = root.childNodes[0];
 
   var matchs = newdom.innerHTML == oldDom.innerHTML;
   if (!matchs) {
+    newdom.hidden = false;
+    newdom.visibilityState = 'visible';
     window['olDom'] = oldDom;
     // what this function?! you ask
     var changed = 0;
@@ -238,7 +242,7 @@ function UPDATE_DOM(newdom = false) {
         var OLD_KIDS = oldDom.childNodes;
         var NEW_KIDS = newdom.childNodes;
         if (!SameParent(OLD_KIDS, NEW_KIDS)) {
-          print(oldDom, newdom);
+          // print(oldDom, newdom);
 
           return false;
         }
@@ -348,7 +352,7 @@ function UPDATE_DOM(newdom = false) {
       // el('shadow').remove();
       SaveValues();
       window.finished = true;
-      print('returned false');
+      // print('returned false');
       var div = document.createElement('div');
       div.setAttribute('id', 'parent');
       div.append(ThisPage()());
@@ -566,6 +570,10 @@ function useState(initialValue, Callback = () => {}, redux = false) {
   return [state, setState];
 }
 
+function useEffect(fn, mainfn) {
+  mainfn.useEffect = fn;
+}
+
 // Just a hook i like ↓↓↓↓↓
 function listen(key, func) {
   return document.addEventListener('keydown', (e) => {
@@ -577,11 +585,13 @@ function listen(key, func) {
     }
   });
 }
+
 let xtra8 = {
   React,
   render,
   Modules,
   useState,
+  useEffect,
   Router,
   Route,
   listen,
@@ -609,3 +619,62 @@ window.succeed = 0;
 
 window.Loaded = true;
 window.finished = true;
+
+function Link(props) {
+  var _xtra = xtra8,
+    render = _xtra.render,
+    useState = _xtra.useState,
+    Modules = _xtra.Modules,
+    Routes = _xtra.Routes;
+
+  function RouteThis(e, _props) {
+    e.preventDefault();
+    var name = _props.href;
+
+    if (name == 'Main') {
+      return (location.hash = '');
+    }
+
+    if (Routes[name]) {
+      var target = Routes[name];
+      target(_props['props={}']);
+      return;
+    }
+  }
+
+  function Link_1(_props2) {
+    if (_props2.href.length == 0) {
+      _props2.href = 'Main';
+    }
+
+    if (Routes[_props2.href] == undefined) {
+      console.error('Page ' + _props2.href + ' is not available');
+      return /*#__PURE__*/ React.createElement(
+        'a',
+        {
+          href: '#',
+          onclick: function onclick(e) {
+            return e.preventDefault();
+          },
+        },
+        _props2.children
+      );
+    }
+
+    return /*#__PURE__*/ React.createElement(
+      'a',
+      {
+        href: '#',
+        onclick: function onclick(e) {
+          return RouteThis(e, _props2);
+        },
+      },
+      _props2.children
+    );
+  }
+
+  Link_1(props);
+  window.xtra8.Modules.SetModule(Link);
+}
+
+window.xtra8.Link = Link;
